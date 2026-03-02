@@ -15,8 +15,15 @@ mkdir -p "$TOOLS_DIR" config
 
 # --- Install Python deps needed for kukapay dune + demcp defillama (safe to run repeatedly) ---
 python3 -m pip install --no-cache-dir --break-system-packages -U pip >/dev/null
-python3 -m pip install --no-cache-dir --break-system-packages \
+python3 -m pip install --no-cache-dir --break-system-packages 
   "mcp[cli]>=1.4.1" httpx pandas python-dotenv >/dev/null
+
+# --- Install uv (used by kukapay/dune-analytics-mcp) ---
+if ! command -v uv >/dev/null 2>&1; then
+  curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null
+  # uv installer places binaries in ~/.local/bin
+  export PATH="$HOME/.local/bin:$PATH"
+fi
 
 # --- Fetch/prepare kukapay/dune-analytics-mcp (CSV query runner) ---
 if [ ! -d "$TOOLS_DIR/dune-analytics-mcp" ]; then
@@ -37,10 +44,26 @@ import pathlib, re
 p = pathlib.Path(r"${TOOLS_DIR}/defillama.py")
 s = p.read_text()
 # replace FastMCP(... port=8080) with env-driven port
-s = re.sub(r'port=8080', 'port=int(__import__("os").getenv("DEFILLAMA_MCP_PORT","18080"))', s)
+s = re.sub(r"port=8080", 'port=int(__import__("os").getenv("DEFILLAMA_MCP_PORT","18080"))', s)
+# ensure it binds to all interfaces (important in some container runtimes)
+s = re.sub(r'host="127\.0\.0\.1"', 'host="0.0.0.0"', s)
 p.write_text(s)
 PY
+
 DEFILLAMA_MCP_PORT="${DEFILLAMA_MCP_PORT}" python3 "$TOOLS_DIR/defillama.py" >/dev/null 2>&1 &
+DEFILLAMA_PID=$!
+
+# Ensure the background SSE server actually booted before starting the Node hub.
+# (Avoids silently continuing and later returning 502s from the proxy.)
+sleep 3
+if ! curl -fsS "http://127.0.0.1:${DEFILLAMA_MCP_PORT}/sse" >/dev/null 2>&1; then
+  echo "DefiLlama MCP failed to start (PID=${DEFILLAMA_PID}) on port ${DEFILLAMA_MCP_PORT}" >&2
+  # best-effort: show if process is still alive
+  if ! kill -0 "${DEFILLAMA_PID}" >/dev/null 2>&1; then
+    echo "DefiLlama MCP process is not running." >&2
+  fi
+  exit 1
+fi
 
 # --- MCP server registry ---
 cat > config/mcp_server.json <<EOF
@@ -84,7 +107,8 @@ cat > config/mcp_server.json <<EOF
       "command": "npx",
       "args": ["-y", "@alchemy/mcp-server"],
       "env": {
-        "ALCHEMY_API_KEY": "${ALCHEMY_API_KEY}"
+        "ALCHEMY_API_KEY": "${ALCHEMY_API_KEY}",
+        "AGENT_WALLET_SERVER": "https://disabled.local"
       }
     },
 
@@ -92,8 +116,8 @@ cat > config/mcp_server.json <<EOF
       "type": "stdio",
       "name": "Dune Custom Queries (CSV) MCP",
       "active": true,
-      "command": "python3",
-      "args": ["${TOOLS_DIR}/dune-analytics-mcp/main.py"],
+      "command": "uv",
+      "args": ["run", "--directory", "${TOOLS_DIR}/dune-analytics-mcp", "python", "main.py"],
       "env": {
         "DUNE_API_KEY": "${DUNE_API_KEY}"
       }
