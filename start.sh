@@ -152,47 +152,129 @@ cat > config/mcp_server.json <<EOF
 EOF
 
 # --- Tool allowlist/denylist (only keep what you said you actually want) ---
-cat > config/tool_config.json <<EOF
+cat > config/tool_config.json <<'EOF'
 {
   "tools": {
-    "defillama__get_token_prices": { "enabled": true },
-    "defillama__get_protocol_tvl": { "enabled": true },
-    "defillama__get_pool_tvl": { "enabled": true },
-    "defillama__get_protocols": { "enabled": false },
-    "defillama__get_chain_tvl": { "enabled": true },
-    "defillama__get_pools": { "enabled": false },
+    "defillama__get_pool_tvl": {
+      "enabled": true,
+      "exposedDescription": "PRIMARY yield hunting tool. Returns live APY and TVL for DeFi pools across Curve, Aave, Convex, Lido, Uniswap. Use first when searching for yield. Prioritize TVL above $5M."
+    },
+    "defillama__get_token_prices": {
+      "enabled": true,
+      "exposedDescription": "Real-time token prices across all chains. Use when calculating recursive borrowing LTV ratios, liquidation thresholds, or comparing yield in USD terms."
+    },
+    "defillama__get_protocol_tvl": {
+      "enabled": true,
+      "exposedDescription": "Returns total TVL for a DeFi protocol. Use to assess protocol safety and size before recommending it for yield deployment."
+    },
+    "defillama__get_chain_tvl": {
+      "enabled": true,
+      "exposedDescription": "Returns TVL for a specific chain. Use to compare chain size and liquidity concentration before selecting where to deploy capital."
+    },
 
-    "dune_custom__run_query": { "enabled": true },
-    "dune_custom__get_latest_result": { "enabled": true },
+    "token_api__getV1EvmPools": {
+      "enabled": true,
+      "exposedDescription": "Returns DEX pool metadata including tokens, fees, and protocol. Use to find Curve, Uniswap V3, or Balancer LP pool addresses for further analysis."
+    },
+    "token_api__getV1EvmPoolsOhlc": {
+      "enabled": true,
+      "exposedDescription": "OHLCV price history for a specific DEX pool. Use to assess whether a pool has consistent volume (sustainable fee yield) or is declining."
+    },
+    "token_api__getV1EvmSwaps": {
+      "enabled": true,
+      "exposedDescription": "Returns recent swap events for a pool. High swap volume often implies higher fee APY for LPs. Use to validate active trading before recommending."
+    },
+    "token_api__getV1EvmDexes": {
+      "enabled": true,
+      "exposedDescription": "Lists all supported DEXs on a given chain. Use to discover which protocols are active on Arbitrum, Base, Optimism, etc."
+    },
+    "token_api__getV1EvmBalances": {
+      "enabled": true,
+      "exposedDescription": "Returns ERC-20 token balances for a wallet. Use to check current positions before recommending reallocation."
+    },
 
-    "dune_preset__get_eigenlayer_avs_metrics": { "enabled": true },
-    "dune_preset__get_eigenlayer_operator_metrics": { "enabled": true },
-    "dune_preset__get_dex_pair_metrics": { "enabled": true },
-    "dune_preset__get_token_pairs_liquidity": { "enabled": true },
-    "dune_preset__get_svm_token_balances": { "enabled": false },
+    "dune_custom__run_query": {
+      "enabled": true,
+      "exposedDescription": "Executes a custom Dune Analytics SQL query by ID. Use for advanced on-chain data: Curve gauge APYs, Aave borrow rates, veCRV boost data, or any protocol-specific metric not available elsewhere."
+    },
+    "dune_custom__get_latest_result": {
+      "enabled": true,
+      "exposedDescription": "Fetches the cached result of a previously run Dune query. Faster than re-running. Use when a query has been run recently and fresh data is not critical."
+    },
+    "dune_preset__get_dex_pair_metrics": {
+      "enabled": true,
+      "exposedDescription": "Volume and liquidity metrics for DEX token pairs. Use to compare trading activity between pairs when evaluating LP yield opportunities."
+    },
+    "dune_preset__get_token_pairs_liquidity": {
+      "enabled": true,
+      "exposedDescription": "Liquidity depth for token pairs. Use to assess slippage risk in recursive borrowing strategies or large position entries."
+    },
+    "dune_preset__get_eigenlayer_avs_metrics": {
+      "enabled": true,
+      "exposedDescription": "EigenLayer AVS metrics. Use to evaluate AVS size, growth, and activity before considering restaking exposure."
+    },
+    "dune_preset__get_eigenlayer_operator_metrics": {
+      "enabled": true,
+      "exposedDescription": "EigenLayer operator metrics. Use to compare operator performance and concentration risk when evaluating restaking exposure."
+    },
 
-    "token_api__getV1EvmPools": { "enabled": true },
-    "token_api__getV1EvmPoolsOhlc": { "enabled": true },
-    "token_api__getV1EvmSwaps": { "enabled": true },
-    "token_api__getV1EvmDexes": { "enabled": true },
-    "token_api__getV1EvmBalances": { "enabled": true },
-
-    "token_api__getV1EvmBalancesHistorical": { "enabled": false },
-    "token_api__getV1EvmBalancesHistoricalNative": { "enabled": false },
-    "token_api__getV1EvmBalancesNative": { "enabled": false },
-    "token_api__getV1EvmNftCollections": { "enabled": false },
-    "token_api__getV1EvmNftHolders": { "enabled": false },
-    "token_api__getV1EvmNftItems": { "enabled": false },
-    "token_api__getV1EvmNftSales": { "enabled": false },
-    "token_api__getV1EvmNftTransfers": { "enabled": false },
-    "token_api__getV1EvmNftOwnerships": { "enabled": false },
-    "token_api__getV1EvmTokens": { "enabled": false },
-    "token_api__getV1EvmHolders": { "enabled": false },
-    "token_api__getV1EvmHoldersNative": { "enabled": false },
-    "token_api__getV1TvmPools": { "enabled": false },
-    "token_api__getV1TvmSwaps": { "enabled": false },
-    "token_api__getV1TvmTokens": { "enabled": false },
-    "token_api__getV1SvmOwner": { "enabled": false }
+    "defillama__get_protocols": {
+      "enabled": false
+    },
+    "defillama__get_pools": {
+      "enabled": false
+    },
+    "dune_preset__get_svm_token_balances": {
+      "enabled": false
+    },
+    "token_api__getV1EvmBalancesHistorical": {
+      "enabled": false
+    },
+    "token_api__getV1EvmBalancesHistoricalNative": {
+      "enabled": false
+    },
+    "token_api__getV1EvmBalancesNative": {
+      "enabled": false
+    },
+    "token_api__getV1EvmNftCollections": {
+      "enabled": false
+    },
+    "token_api__getV1EvmNftHolders": {
+      "enabled": false
+    },
+    "token_api__getV1EvmNftItems": {
+      "enabled": false
+    },
+    "token_api__getV1EvmNftSales": {
+      "enabled": false
+    },
+    "token_api__getV1EvmNftTransfers": {
+      "enabled": false
+    },
+    "token_api__getV1EvmNftOwnerships": {
+      "enabled": false
+    },
+    "token_api__getV1EvmTokens": {
+      "enabled": false
+    },
+    "token_api__getV1EvmHolders": {
+      "enabled": false
+    },
+    "token_api__getV1EvmHoldersNative": {
+      "enabled": false
+    },
+    "token_api__getV1TvmPools": {
+      "enabled": false
+    },
+    "token_api__getV1TvmSwaps": {
+      "enabled": false
+    },
+    "token_api__getV1TvmTokens": {
+      "enabled": false
+    },
+    "token_api__getV1SvmOwner": {
+      "enabled": false
+    }
   }
 }
 EOF
