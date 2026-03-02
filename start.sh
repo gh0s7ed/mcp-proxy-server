@@ -15,8 +15,7 @@ mkdir -p "$TOOLS_DIR" config
 
 # --- Install Python deps needed for kukapay dune + demcp defillama (safe to run repeatedly) ---
 python3 -m pip install --no-cache-dir --break-system-packages -U pip >/dev/null
-python3 -m pip install --no-cache-dir --break-system-packages 
-  "mcp[cli]>=1.4.1" httpx pandas python-dotenv >/dev/null
+python3 -m pip install --no-cache-dir --break-system-packages "mcp[cli]>=1.4.1" httpx pandas python-dotenv >/dev/null
 
 # --- Install uv (used by kukapay/dune-analytics-mcp) ---
 if ! command -v uv >/dev/null 2>&1; then
