@@ -62,15 +62,15 @@ DEFILLAMA_PID=$!
 
 # Ensure the background SSE server actually booted before starting the Node hub.
 # (Avoids silently continuing and later returning 502s from the proxy.)
-sleep 3
-if ! curl -fsS "http://127.0.0.1:${DEFILLAMA_MCP_PORT}/sse" >/dev/null 2>&1; then
+echo "Waiting for DefiLlama FastMCP to bind to port ${DEFILLAMA_MCP_PORT}..."
+timeout 10 bash -c "until printf '' 2>>/dev/null >>/dev/tcp/127.0.0.1/${DEFILLAMA_MCP_PORT}; do sleep 1; done" || {
   echo "DefiLlama MCP failed to start (PID=${DEFILLAMA_PID}) on port ${DEFILLAMA_MCP_PORT}" >&2
-  # best-effort: show if process is still alive
   if ! kill -0 "${DEFILLAMA_PID}" >/dev/null 2>&1; then
     echo "DefiLlama MCP process is not running." >&2
   fi
   exit 1
-fi
+}
+echo "DefiLlama MCP is live on port ${DEFILLAMA_MCP_PORT}!"
 
 # --- MCP server registry ---
 cat > config/mcp_server.json <<EOF
