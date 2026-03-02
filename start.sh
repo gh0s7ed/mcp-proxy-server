@@ -3,6 +3,7 @@ set -euo pipefail
 
 : "${GATEWAY_API_KEY:?Set GATEWAY_API_KEY in Railway Variables}"
 : "${COINGECKO_DEMO_API_KEY:?Set COINGECKO_DEMO_API_KEY in Railway Variables}"
+: "${THEGRAPH_ACCESS_TOKEN:?Set THEGRAPH_ACCESS_TOKEN (JWT) in Railway Variables}"
 
 mkdir -p config
 
