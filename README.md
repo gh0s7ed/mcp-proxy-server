@@ -1,6 +1,5 @@
 # MCP Proxy Server
 
-[简体中文](README_ZH.md)
 ## ✨ Key Features Highlight
 
 *   **🌐 Web UI Management:** Easily manage all connected MCP servers through an intuitive web interface (optional, requires enabling).
@@ -428,7 +427,7 @@ npm run watch
 
 ## Running with Docker
 
-A `Dockerfile` is provided. The container runs the server in **SSE mode** by default (using `build/sse.js`) and includes all necessary dependencies. The `TOOLS_FOLDER` environment variable defaults to `/tools` inside the container.
+A `Dockerfile` is provided at `deploy/Dockerfile`. The container runs the server in **SSE mode** by default (using `build/sse.js`) and includes all necessary dependencies. The `TOOLS_FOLDER` environment variable defaults to `/tools` inside the container.
 
 **Recommended: Using the Pre-built Image (from GHCR)**
 
@@ -491,13 +490,13 @@ docker run -d \
   ghcr.io/ptbsare/mcp-proxy-server/mcp-proxy-server:latest
 ```
 - Replace `./my_config` with your host path containing `mcp_server.json` and optionally `tool_config.json`. The container expects config files in `/app/config`.
-- If you override `TOOLS_FOLDER` for server installations via Admin UI, ensure you mount a corresponding volume (e.g., `-v /path/on/host/for_tools:/my/custom_tools_volume`). If using the default `/tools` (set by `TOOLS_FOLDER` in Dockerfile), you can mount to `/tools` (e.g., `-v /path/on/host/to/tools_default:/tools`).
+- If you override `TOOLS_FOLDER` for server installations via Admin UI, ensure you mount a corresponding volume (e.g., `-v /path/on/host/for_tools:/my/custom_tools_volume`). If using the default `/tools` (set by `TOOLS_FOLDER` in `deploy/Dockerfile`), you can mount to `/tools` (e.g., `-v /path/on/host/to/tools_default:/tools`).
 - Adjust the tag (`:latest`) if you pulled a specific version.
 - Set other environment variables using the `-e` flag as needed.
 
 **Building the Image Locally (Optional):**
 ```bash
-docker build -t mcp-proxy-server .
+docker build -t mcp-proxy-server -f deploy/Dockerfile .
 ```
 *(If you build locally, use `mcp-proxy-server` instead of the `ghcr.io/...` image name in the `docker run` command above).*
 
