@@ -15,7 +15,7 @@ mkdir -p "$TOOLS_DIR" config
 
 # --- Install Python deps needed for kukapay dune + demcp defillama (safe to run repeatedly) ---
 python3 -m pip install --no-cache-dir --break-system-packages -U pip >/dev/null
-python3 -m pip install --no-cache-dir --break-system-packages 
+python3 -m pip install --no-cache-dir --break-system-packages \
   "mcp[cli]>=1.4.1" httpx pandas python-dotenv >/dev/null
 
 # --- Install uv (used by kukapay/dune-analytics-mcp) ---
@@ -55,15 +55,14 @@ DEFILLAMA_PID=$!
 
 # Ensure the background SSE server actually booted before starting the Node hub.
 # (Avoids silently continuing and later returning 502s from the proxy.)
-sleep 3
-if ! curl -fsS "http://127.0.0.1:${DEFILLAMA_MCP_PORT}/sse" >/dev/null 2>&1; then
+# Wait up to 10 seconds for the DefiLlama FastMCP server to bind to the port
+timeout 10 bash -c "until printf '' 2>>/dev/null >>/dev/tcp/127.0.0.1/${DEFILLAMA_MCP_PORT}; do sleep 1; done" || {
   echo "DefiLlama MCP failed to start (PID=${DEFILLAMA_PID}) on port ${DEFILLAMA_MCP_PORT}" >&2
-  # best-effort: show if process is still alive
   if ! kill -0 "${DEFILLAMA_PID}" >/dev/null 2>&1; then
     echo "DefiLlama MCP process is not running." >&2
   fi
   exit 1
-fi
+}
 
 # --- MCP server registry ---
 cat > config/mcp_server.json <<EOF
