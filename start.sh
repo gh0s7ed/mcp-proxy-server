@@ -174,8 +174,3 @@ cat > config/tool_config.json <<EOF
   }
 }
 EOF
-
-echo "Building Node App..."
-npm run build
-echo "Starting Proxy Server..."
-exec node build/sse.js
