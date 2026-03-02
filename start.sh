@@ -158,9 +158,8 @@ cat > config/tool_config.json <<EOF
     "defillama__get_token_prices": { "enabled": true },
     "defillama__get_protocol_tvl": { "enabled": true },
     "defillama__get_pool_tvl": { "enabled": true },
-
     "defillama__get_protocols": { "enabled": false },
-    "defillama__get_chain_tvl": { "enabled": false },
+    "defillama__get_chain_tvl": { "enabled": true },
     "defillama__get_pools": { "enabled": false },
 
     "dune_custom__run_query": { "enabled": true },
@@ -170,7 +169,30 @@ cat > config/tool_config.json <<EOF
     "dune_preset__get_eigenlayer_operator_metrics": { "enabled": true },
     "dune_preset__get_dex_pair_metrics": { "enabled": true },
     "dune_preset__get_token_pairs_liquidity": { "enabled": true },
-    "dune_preset__get_svm_token_balances": { "enabled": false }
+    "dune_preset__get_svm_token_balances": { "enabled": false },
+
+    "token_api__getV1EvmPools": { "enabled": true },
+    "token_api__getV1EvmPoolsOhlc": { "enabled": true },
+    "token_api__getV1EvmSwaps": { "enabled": true },
+    "token_api__getV1EvmDexes": { "enabled": true },
+    "token_api__getV1EvmBalances": { "enabled": true },
+
+    "token_api__getV1EvmBalancesHistorical": { "enabled": false },
+    "token_api__getV1EvmBalancesHistoricalNative": { "enabled": false },
+    "token_api__getV1EvmBalancesNative": { "enabled": false },
+    "token_api__getV1EvmNftCollections": { "enabled": false },
+    "token_api__getV1EvmNftHolders": { "enabled": false },
+    "token_api__getV1EvmNftItems": { "enabled": false },
+    "token_api__getV1EvmNftSales": { "enabled": false },
+    "token_api__getV1EvmNftTransfers": { "enabled": false },
+    "token_api__getV1EvmNftOwnerships": { "enabled": false },
+    "token_api__getV1EvmTokens": { "enabled": false },
+    "token_api__getV1EvmHolders": { "enabled": false },
+    "token_api__getV1EvmHoldersNative": { "enabled": false },
+    "token_api__getV1TvmPools": { "enabled": false },
+    "token_api__getV1TvmSwaps": { "enabled": false },
+    "token_api__getV1TvmTokens": { "enabled": false },
+    "token_api__getV1SvmOwner": { "enabled": false }
   }
 }
 EOF
