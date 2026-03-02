@@ -29,11 +29,19 @@ if [ ! -d "$TOOLS_DIR/dune-analytics-mcp" ]; then
   git clone --depth=1 https://github.com/kukapay/dune-analytics-mcp "$TOOLS_DIR/dune-analytics-mcp" >/dev/null
 fi
 
+# --- Install Bun (used by ekailabs/dune-mcp-server) ---
+if ! command -v bun >/dev/null 2>&1; then
+  curl -fsSL https://bun.sh/install | bash
+  export PATH="$HOME/.bun/bin:$PATH"
+fi
+
 # --- Fetch/prepare ekailabs/dune-mcp-server (preset metrics, EigenLayer, DEX, etc.) ---
 if [ ! -d "$TOOLS_DIR/dune-mcp-server" ]; then
   git clone --depth=1 https://github.com/ekailabs/dune-mcp-server "$TOOLS_DIR/dune-mcp-server" >/dev/null
 fi
-( cd "$TOOLS_DIR/dune-mcp-server" && bun install >/dev/null )
+cd "$TOOLS_DIR/dune-mcp-server"
+bun install --no-save
+cd "$ROOT_DIR"
 
 # --- Start demcp defillama MCP as local SSE backend on a non-conflicting port ---
 # demcp hardcodes 127.0.0.1:8080, patch it to use DEFILLAMA_MCP_PORT.
@@ -167,5 +175,7 @@ cat > config/tool_config.json <<EOF
 }
 EOF
 
+echo "Building Node App..."
 npm run build
+echo "Starting Proxy Server..."
 exec node build/sse.js
