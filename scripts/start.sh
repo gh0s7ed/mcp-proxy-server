@@ -9,7 +9,6 @@ set -euo pipefail
 : "${ETHERSCAN_API_KEY:?Set ETHERSCAN_API_KEY in Railway Variables}"
 : "${GOPLUS_API_KEY:?Set GOPLUS_API_KEY in Railway Variables}"
 : "${GOPLUS_API_SECRET:?Set GOPLUS_API_SECRET in Railway Variables}"
-: "${WHALE_ALERT_API_KEY:?Set WHALE_ALERT_API_KEY in Railway Variables}"
 : "${DUNE_SIM_API_KEY:?Set DUNE_SIM_API_KEY in Railway Variables}"
 
 ROOT_DIR="$(pwd)"
@@ -47,11 +46,6 @@ fi
 cd "$TOOLS_DIR/dune-mcp-server"
 bun install --no-save
 cd "$ROOT_DIR"
-
-# --- Fetch/prepare kukapay/whale-tracker-mcp ---
-if [ ! -d "$TOOLS_DIR/whale-tracker-mcp" ]; then
-  git clone --depth=1 https://github.com/kukapay/whale-tracker-mcp "$TOOLS_DIR/whale-tracker-mcp" >/dev/null
-fi
 
 # --- Fetch/prepare kukapay/wallet-inspector-mcp ---
 if [ ! -d "$TOOLS_DIR/wallet-inspector-mcp" ]; then
@@ -194,17 +188,6 @@ cat > config/mcp_server.json <<EOF
         "--secret",
         "${GOPLUS_API_SECRET}"
       ]
-    },
-
-    "whale_tracker": {
-      "type": "stdio",
-      "name": "Whale Tracker MCP (Whale Alert)",
-      "active": true,
-      "command": "python3",
-      "args": ["${TOOLS_DIR}/whale-tracker-mcp/whale_tracker.py"],
-      "env": {
-        "WHALE_ALERT_API_KEY": "${WHALE_ALERT_API_KEY}"
-      }
     },
 
     "wallet_inspector": {
@@ -425,16 +408,6 @@ cat > config/tool_config.json <<'EOF'
       "enabled": true,
       "exposedDescription": "Sui token security checks (upgradeability and capability ownership)."
     },
-
-    "whale_tracker__get_recent_transactions": {
-      "enabled": true,
-      "exposedDescription": "Fetch recent whale transactions with optional filters (chain, min USD value, limit)."
-    },
-    "whale_tracker__get_transaction_details": {
-      "enabled": true,
-      "exposedDescription": "Fetch detailed whale transaction info by Whale Alert transaction ID."
-    },
-
     "wallet_inspector__get_wallet_balance": {
       "enabled": true,
       "exposedDescription": "Cross-chain wallet balances (EVM + Solana) formatted for quick review."
