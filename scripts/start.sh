@@ -6,6 +6,11 @@ set -euo pipefail
 : "${COINGECKO_DEMO_API_KEY:?Set COINGECKO_DEMO_API_KEY in Railway Variables}"
 : "${ALCHEMY_API_KEY:?Set ALCHEMY_API_KEY in Railway Variables}"
 : "${DUNE_API_KEY:?Set DUNE_API_KEY in Railway Variables}"
+: "${ETHERSCAN_API_KEY:?Set ETHERSCAN_API_KEY in Railway Variables}"
+: "${GOPLUS_API_KEY:?Set GOPLUS_API_KEY in Railway Variables}"
+: "${GOPLUS_API_SECRET:?Set GOPLUS_API_SECRET in Railway Variables}"
+: "${WHALE_ALERT_API_KEY:?Set WHALE_ALERT_API_KEY in Railway Variables}"
+: "${DUNE_SIM_API_KEY:?Set DUNE_SIM_API_KEY in Railway Variables}"
 
 ROOT_DIR="$(pwd)"
 TOOLS_DIR="${TOOLS_DIR:-$ROOT_DIR/tools}"
@@ -13,9 +18,9 @@ DEFILLAMA_MCP_PORT="${DEFILLAMA_MCP_PORT:-18080}"
 
 mkdir -p "$TOOLS_DIR" config
 
-# --- Install Python deps needed for kukapay dune + demcp defillama (safe to run repeatedly) ---
+# --- Install Python deps needed for kukapay dune, demcp defillama, wallet-inspector (safe to run repeatedly) ---
 python3 -m pip install --no-cache-dir --break-system-packages -U pip >/dev/null
-python3 -m pip install --no-cache-dir --break-system-packages "mcp[cli]>=1.4.1" httpx pandas python-dotenv >/dev/null
+python3 -m pip install --no-cache-dir --break-system-packages "mcp[cli]>=1.4.1" httpx pandas python-dotenv tabulate >/dev/null
 
 # --- Install uv (used by kukapay/dune-analytics-mcp) ---
 if ! command -v uv >/dev/null 2>&1; then
@@ -41,6 +46,30 @@ if [ ! -d "$TOOLS_DIR/dune-mcp-server" ]; then
 fi
 cd "$TOOLS_DIR/dune-mcp-server"
 bun install --no-save
+cd "$ROOT_DIR"
+
+# --- Fetch/prepare kukapay/whale-tracker-mcp ---
+if [ ! -d "$TOOLS_DIR/whale-tracker-mcp" ]; then
+  git clone --depth=1 https://github.com/kukapay/whale-tracker-mcp "$TOOLS_DIR/whale-tracker-mcp" >/dev/null
+fi
+
+# --- Fetch/prepare kukapay/wallet-inspector-mcp ---
+if [ ! -d "$TOOLS_DIR/wallet-inspector-mcp" ]; then
+  git clone --depth=1 https://github.com/kukapay/wallet-inspector-mcp "$TOOLS_DIR/wallet-inspector-mcp" >/dev/null
+fi
+
+# --- Fetch/prepare foodaka/aave-v3-mcp ---
+if [ ! -d "$TOOLS_DIR/aave-v3-mcp" ]; then
+  git clone --depth=1 https://github.com/foodaka/aave-v3-mcp "$TOOLS_DIR/aave-v3-mcp" >/dev/null
+fi
+
+# --- Fetch/prepare dennisonbertram/mcp-etherscan-server ---
+if [ ! -d "$TOOLS_DIR/mcp-etherscan-server" ]; then
+  git clone --depth=1 https://github.com/dennisonbertram/mcp-etherscan-server "$TOOLS_DIR/mcp-etherscan-server" >/dev/null
+fi
+cd "$TOOLS_DIR/mcp-etherscan-server"
+npm install >/dev/null
+npm run build >/dev/null
 cd "$ROOT_DIR"
 
 # --- Start demcp defillama MCP as local SSE backend on a non-conflicting port ---
@@ -139,6 +168,62 @@ cat > config/mcp_server.json <<EOF
       "env": {
         "DUNE_API_KEY": "${DUNE_API_KEY}"
       }
+    },
+
+    "etherscan": {
+      "type": "stdio",
+      "name": "Etherscan MCP (V2, multi-chain)",
+      "active": true,
+      "command": "node",
+      "args": ["${TOOLS_DIR}/mcp-etherscan-server/build/index.js"],
+      "env": {
+        "ETHERSCAN_API_KEY": "${ETHERSCAN_API_KEY}"
+      }
+    },
+
+    "goplus": {
+      "type": "stdio",
+      "name": "GoPlus Security MCP",
+      "active": true,
+      "command": "npx",
+      "args": [
+        "-y",
+        "goplus-mcp@latest",
+        "--key",
+        "${GOPLUS_API_KEY}",
+        "--secret",
+        "${GOPLUS_API_SECRET}"
+      ]
+    },
+
+    "whale_tracker": {
+      "type": "stdio",
+      "name": "Whale Tracker MCP (Whale Alert)",
+      "active": true,
+      "command": "python3",
+      "args": ["${TOOLS_DIR}/whale-tracker-mcp/whale_tracker.py"],
+      "env": {
+        "WHALE_ALERT_API_KEY": "${WHALE_ALERT_API_KEY}"
+      }
+    },
+
+    "wallet_inspector": {
+      "type": "stdio",
+      "name": "Wallet Inspector MCP",
+      "active": true,
+      "command": "uv",
+      "args": ["--directory", "${TOOLS_DIR}/wallet-inspector-mcp", "run", "main.py"],
+      "env": {
+        "DUNE_SIM_API_KEY": "${DUNE_SIM_API_KEY}"
+      }
+    },
+
+    "aave_v3": {
+      "type": "stdio",
+      "name": "Aave V3 MCP",
+      "active": true,
+      "command": "python3",
+      "args": ["${TOOLS_DIR}/aave-v3-mcp/aave_mcp_server.py"]
     },
 
     "defillama": {
@@ -255,6 +340,175 @@ cat > config/tool_config.json <<'EOF'
       "exposedDescription": "Search for subgraphs by keyword in display name ordered by signal. Use to discover candidate subgraphs, then fetch schema and query the best match."
     },
 
+    "etherscan__check-balance": {
+      "enabled": true,
+      "exposedDescription": "Get native token balance for an address on any supported Etherscan V2 chain."
+    },
+    "etherscan__get-transactions": {
+      "enabled": true,
+      "exposedDescription": "Fetch recent normal transactions for an address (timestamps, value, from/to)."
+    },
+    "etherscan__get-token-transfers": {
+      "enabled": true,
+      "exposedDescription": "Fetch ERC20 token transfer history for an address."
+    },
+    "etherscan__get-token-portfolio": {
+      "enabled": true,
+      "exposedDescription": "Get all token balances for an address (portfolio view)."
+    },
+    "etherscan__get-token-info": {
+      "enabled": true,
+      "exposedDescription": "Get token metadata and details for a token contract address."
+    },
+    "etherscan__get-token-holders": {
+      "enabled": true,
+      "exposedDescription": "Get top holders for a token contract (concentration and distribution checks)."
+    },
+    "etherscan__get-contract-abi": {
+      "enabled": true,
+      "exposedDescription": "Fetch a verified contract ABI for decoding/interacting safely."
+    },
+    "etherscan__get-contract-source": {
+      "enabled": true,
+      "exposedDescription": "Fetch verified source code and metadata for a contract (quick sanity check)."
+    },
+    "etherscan__get-contract-creation": {
+      "enabled": true,
+      "exposedDescription": "Find contract creator + creation transaction (provenance checks)."
+    },
+    "etherscan__get-gas-prices": {
+      "enabled": true,
+      "exposedDescription": "Get current gas price tiers in Gwei for the selected network."
+    },
+    "etherscan__get-ens-name": {
+      "enabled": true,
+      "exposedDescription": "Resolve an address to ENS (if available)."
+    },
+    "etherscan__get-logs": {
+      "enabled": true,
+      "exposedDescription": "Query event logs with topic filtering (for contract activity / signals)."
+    },
+    "etherscan__list-networks": {
+      "enabled": true,
+      "exposedDescription": "List supported chain IDs/networks available via Etherscan V2."
+    },
+    "etherscan__get-block-details": {
+      "enabled": true,
+      "exposedDescription": "Fetch block details (hash, gas, tx count) for troubleshooting/analysis."
+    },
+
+    "goplus__token_security": {
+      "enabled": true,
+      "exposedDescription": "Token security analysis (honeypot flags, liquidity, holder concentration) for EVM chains."
+    },
+    "goplus__malicious_address": {
+      "enabled": true,
+      "exposedDescription": "Check if an address is malicious or associated with scams across supported chains."
+    },
+    "goplus__phishing_website": {
+      "enabled": true,
+      "exposedDescription": "Check whether a URL is a known phishing/malicious site."
+    },
+    "goplus__nft_security": {
+      "enabled": true,
+      "exposedDescription": "NFT contract security analysis (optional token ID)."
+    },
+    "goplus__approval_security": {
+      "enabled": true,
+      "exposedDescription": "Analyze token approvals for a wallet and flag risky allowances."
+    },
+    "goplus__solana_token_security": {
+      "enabled": true,
+      "exposedDescription": "Solana token security checks (mint authority, freeze, mutability)."
+    },
+    "goplus__sui_token_security": {
+      "enabled": true,
+      "exposedDescription": "Sui token security checks (upgradeability and capability ownership)."
+    },
+
+    "whale_tracker__get_recent_transactions": {
+      "enabled": true,
+      "exposedDescription": "Fetch recent whale transactions with optional filters (chain, min USD value, limit)."
+    },
+    "whale_tracker__get_transaction_details": {
+      "enabled": true,
+      "exposedDescription": "Fetch detailed whale transaction info by Whale Alert transaction ID."
+    },
+
+    "wallet_inspector__get_wallet_balance": {
+      "enabled": true,
+      "exposedDescription": "Cross-chain wallet balances (EVM + Solana) formatted for quick review."
+    },
+    "wallet_inspector__get_wallet_activity": {
+      "enabled": true,
+      "exposedDescription": "EVM wallet activity feed (types, assets, USD value) for behavior analysis."
+    },
+    "wallet_inspector__get_wallet_transactions": {
+      "enabled": true,
+      "exposedDescription": "Wallet transaction history (EVM + Solana) with an optional limit."
+    },
+
+    "aave_v3__get_supported_chains": {
+      "enabled": true,
+      "exposedDescription": "List Aave V3 supported chains and IDs."
+    },
+    "aave_v3__get_markets": {
+      "enabled": true,
+      "exposedDescription": "Fetch Aave markets across chains with TVL/liquidity and top asset APYs."
+    },
+    "aave_v3__get_market_details": {
+      "enabled": true,
+      "exposedDescription": "Deep market details for a specific Aave pool (reserves, caps, risk params)."
+    },
+    "aave_v3__get_user_positions": {
+      "enabled": true,
+      "exposedDescription": "User supply/borrow positions across chains with totals and position breakdown."
+    },
+    "aave_v3__get_user_market_state": {
+      "enabled": true,
+      "exposedDescription": "User health factor and liquidation risk for a specific Aave market."
+    },
+    "aave_v3__get_user_transaction_history": {
+      "enabled": true,
+      "exposedDescription": "User transaction history for Aave activity analysis."
+    },
+    "aave_v3__get_reserve_details": {
+      "enabled": true,
+      "exposedDescription": "Reserve details for an asset (APY, caps, collateral params, risk)."
+    },
+    "aave_v3__get_apy_history": {
+      "enabled": true,
+      "exposedDescription": "Historical APY for supply or borrow for an asset/market."
+    },
+    "aave_v3__prepare_supply_transaction": {
+      "enabled": true,
+      "exposedDescription": "Prepare a supply/deposit tx payload (no signing, just tx data)."
+    },
+    "aave_v3__prepare_borrow_transaction": {
+      "enabled": true,
+      "exposedDescription": "Prepare a borrow tx payload (no signing, just tx data)."
+    },
+    "aave_v3__prepare_repay_transaction": {
+      "enabled": true,
+      "exposedDescription": "Prepare a repay tx payload (no signing, just tx data)."
+    },
+    "aave_v3__prepare_withdraw_transaction": {
+      "enabled": true,
+      "exposedDescription": "Prepare a withdraw tx payload (no signing, just tx data)."
+    },
+    "aave_v3__get_vaults": {
+      "enabled": true,
+      "exposedDescription": "List Aave yield vault strategies."
+    },
+    "aave_v3__get_vault_details": {
+      "enabled": true,
+      "exposedDescription": "Detailed vault info for evaluating yield strategies."
+    },
+    "aave_v3__get_gho_balance": {
+      "enabled": true,
+      "exposedDescription": "Get sGHO (staked GHO) balance."
+    },
+
     "defillama__get_protocols": {
       "enabled": false
     },
@@ -311,7 +565,20 @@ cat > config/tool_config.json <<'EOF'
     },
     "token_api__getV1SvmOwner": {
       "enabled": false
-    }
+    },
+
+    "etherscan__get-internal-transactions": { "enabled": false },
+    "etherscan__get-mined-blocks": { "enabled": false },
+    "etherscan__get-beacon-withdrawals": { "enabled": false },
+
+    "etherscan__verify-contract": { "enabled": false },
+    "etherscan__check-verification": { "enabled": false },
+    "etherscan__verify-proxy": { "enabled": false },
+    "etherscan__get-verified-contracts": { "enabled": false },
+
+    "etherscan__get-block-reward": { "enabled": false },
+    "etherscan__get-network-stats": { "enabled": false },
+    "etherscan__get-daily-stats": { "enabled": false }
   }
 }
 EOF
