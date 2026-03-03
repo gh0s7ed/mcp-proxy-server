@@ -19,70 +19,120 @@ mkdir -p "$TOOLS_DIR" config
 
 # --- Install Python deps needed for kukapay dune, demcp defillama, wallet-inspector (safe to run repeatedly) ---
 # Pin versions for reproducible deploys (avoid breakage from upstream releases)
-PY_PIP_VERSION="24.2"
 PY_MCP_VERSION="1.4.1"
 PY_HTTPX_VERSION="0.27.0"
 PY_PANDAS_VERSION="2.2.2"
 PY_DOTENV_VERSION="1.0.1"
 PY_TABULATE_VERSION="0.9.0"
 
-python3 -m pip install --no-cache-dir --break-system-packages "pip==${PY_PIP_VERSION}" >/dev/null
+# Skip pip upgrade to avoid circular dependency issues during self-upgrade
+# The system pip (24.0+) is sufficient for our needs
+echo "Installing Python dependencies..."
 python3 -m pip install --no-cache-dir --break-system-packages \
   "mcp[cli]==${PY_MCP_VERSION}" \
   "httpx==${PY_HTTPX_VERSION}" \
   "pandas==${PY_PANDAS_VERSION}" \
   "python-dotenv==${PY_DOTENV_VERSION}" \
-  "tabulate==${PY_TABULATE_VERSION}" \
-  >/dev/null
+  "tabulate==${PY_TABULATE_VERSION}" || {
+    echo "ERROR: Failed to install Python dependencies" >&2
+    exit 1
+  }
+echo "Python dependencies installed successfully"
 
 # --- Install uv (used by kukapay/dune-analytics-mcp) ---
 if ! command -v uv >/dev/null 2>&1; then
-  curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null
+  echo "Installing uv..."
+  curl -LsSf https://astral.sh/uv/install.sh | sh || {
+    echo "ERROR: Failed to install uv" >&2
+    exit 1
+  }
   # uv installer places binaries in ~/.local/bin
   export PATH="$HOME/.local/bin:$PATH"
+  echo "uv installed successfully"
 fi
 
 # --- Fetch/prepare kukapay/dune-analytics-mcp (CSV query runner) ---
 if [ ! -d "$TOOLS_DIR/dune-analytics-mcp" ]; then
-  git clone --depth=1 https://github.com/kukapay/dune-analytics-mcp "$TOOLS_DIR/dune-analytics-mcp" >/dev/null
+  echo "Cloning dune-analytics-mcp..."
+  git clone --depth=1 https://github.com/kukapay/dune-analytics-mcp "$TOOLS_DIR/dune-analytics-mcp" || {
+    echo "ERROR: Failed to clone dune-analytics-mcp" >&2
+    exit 1
+  }
 fi
 
 # --- Install Bun (used by ekailabs/dune-mcp-server) ---
 if ! command -v bun >/dev/null 2>&1; then
-  curl -fsSL https://bun.sh/install | bash
+  echo "Installing Bun..."
+  curl -fsSL https://bun.sh/install | bash || {
+    echo "ERROR: Failed to install Bun" >&2
+    exit 1
+  }
   export PATH="$HOME/.bun/bin:$PATH"
+  echo "Bun installed successfully"
 fi
 
 # --- Fetch/prepare ekailabs/dune-mcp-server (preset metrics, EigenLayer, DEX, etc.) ---
 if [ ! -d "$TOOLS_DIR/dune-mcp-server" ]; then
-  git clone --depth=1 https://github.com/ekailabs/dune-mcp-server "$TOOLS_DIR/dune-mcp-server" >/dev/null
+  echo "Cloning dune-mcp-server..."
+  git clone --depth=1 https://github.com/ekailabs/dune-mcp-server "$TOOLS_DIR/dune-mcp-server" || {
+    echo "ERROR: Failed to clone dune-mcp-server" >&2
+    exit 1
+  }
 fi
 cd "$TOOLS_DIR/dune-mcp-server"
-bun install --no-save
+echo "Installing dune-mcp-server dependencies..."
+bun install --no-save || {
+  echo "ERROR: Failed to install dune-mcp-server dependencies" >&2
+  exit 1
+}
 cd "$ROOT_DIR"
 
 # --- Fetch/prepare kukapay/wallet-inspector-mcp ---
 if [ ! -d "$TOOLS_DIR/wallet-inspector-mcp" ]; then
-  git clone --depth=1 https://github.com/kukapay/wallet-inspector-mcp "$TOOLS_DIR/wallet-inspector-mcp" >/dev/null
+  echo "Cloning wallet-inspector-mcp..."
+  git clone --depth=1 https://github.com/kukapay/wallet-inspector-mcp "$TOOLS_DIR/wallet-inspector-mcp" || {
+    echo "ERROR: Failed to clone wallet-inspector-mcp" >&2
+    exit 1
+  }
 fi
 
 # --- Fetch/prepare foodaka/aave-v3-mcp ---
 if [ ! -d "$TOOLS_DIR/aave-v3-mcp" ]; then
-  git clone --depth=1 https://github.com/foodaka/aave-v3-mcp "$TOOLS_DIR/aave-v3-mcp" >/dev/null
+  echo "Cloning aave-v3-mcp..."
+  git clone --depth=1 https://github.com/foodaka/aave-v3-mcp "$TOOLS_DIR/aave-v3-mcp" || {
+    echo "ERROR: Failed to clone aave-v3-mcp" >&2
+    exit 1
+  }
 fi
 
 # --- Fetch/prepare dennisonbertram/mcp-etherscan-server ---
 if [ ! -d "$TOOLS_DIR/mcp-etherscan-server" ]; then
-  git clone --depth=1 https://github.com/dennisonbertram/mcp-etherscan-server "$TOOLS_DIR/mcp-etherscan-server" >/dev/null
+  echo "Cloning mcp-etherscan-server..."
+  git clone --depth=1 https://github.com/dennisonbertram/mcp-etherscan-server "$TOOLS_DIR/mcp-etherscan-server" || {
+    echo "ERROR: Failed to clone mcp-etherscan-server" >&2
+    exit 1
+  }
 fi
 cd "$TOOLS_DIR/mcp-etherscan-server"
-npm install >/dev/null
-npm run build >/dev/null
+echo "Installing mcp-etherscan-server dependencies..."
+npm install || {
+  echo "ERROR: Failed to install mcp-etherscan-server dependencies" >&2
+  exit 1
+}
+echo "Building mcp-etherscan-server..."
+npm run build || {
+  echo "ERROR: Failed to build mcp-etherscan-server" >&2
+  exit 1
+}
 cd "$ROOT_DIR"
 
 # --- Start demcp defillama MCP as local SSE backend on a non-conflicting port ---
 # demcp hardcodes 127.0.0.1:8080, patch it to use DEFILLAMA_MCP_PORT.
-curl -fsSL https://raw.githubusercontent.com/demcp/demcp-defillama-mcp/master/defillama.py -o "$TOOLS_DIR/defillama.py"
+echo "Fetching defillama.py..."
+curl -fsSL https://raw.githubusercontent.com/demcp/demcp-defillama-mcp/master/defillama.py -o "$TOOLS_DIR/defillama.py" || {
+  echo "ERROR: Failed to download defillama.py" >&2
+  exit 1
+}
 python3 - <<PY
 import pathlib, re
 p = pathlib.Path(r"${TOOLS_DIR}/defillama.py")
@@ -94,17 +144,22 @@ s = re.sub(r'host="127\.0\.0\.1"', 'host="0.0.0.0"', s)
 p.write_text(s)
 PY
 
-DEFILLAMA_MCP_PORT="${DEFILLAMA_MCP_PORT}" python3 "$TOOLS_DIR/defillama.py" >/dev/null 2>&1 &
+echo "Starting DefiLlama MCP on port ${DEFILLAMA_MCP_PORT}..."
+# Redirect output to a log file instead of /dev/null for debugging
+DEFILLAMA_LOG="/tmp/defillama_mcp.log"
+DEFILLAMA_MCP_PORT="${DEFILLAMA_MCP_PORT}" python3 "$TOOLS_DIR/defillama.py" >"$DEFILLAMA_LOG" 2>&1 &
 DEFILLAMA_PID=$!
 
 # Ensure the background SSE server actually booted before starting the Node hub.
 # (Avoids silently continuing and later returning 502s from the proxy.)
 echo "Waiting for DefiLlama FastMCP to bind to port ${DEFILLAMA_MCP_PORT}..."
 timeout 10 bash -c "until printf '' 2>>/dev/null >>/dev/tcp/127.0.0.1/${DEFILLAMA_MCP_PORT}; do sleep 1; done" || {
-  echo "DefiLlama MCP failed to start (PID=${DEFILLAMA_PID}) on port ${DEFILLAMA_MCP_PORT}" >&2
+  echo "ERROR: DefiLlama MCP failed to start (PID=${DEFILLAMA_PID}) on port ${DEFILLAMA_MCP_PORT}" >&2
   if ! kill -0 "${DEFILLAMA_PID}" >/dev/null 2>&1; then
-    echo "DefiLlama MCP process is not running." >&2
+    echo "ERROR: DefiLlama MCP process is not running." >&2
   fi
+  echo "ERROR: Check logs at ${DEFILLAMA_LOG} for details:" >&2
+  tail -20 "$DEFILLAMA_LOG" >&2
   exit 1
 }
 echo "DefiLlama MCP is live on port ${DEFILLAMA_MCP_PORT}!"
