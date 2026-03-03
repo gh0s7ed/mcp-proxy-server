@@ -624,3 +624,5 @@ cat > config/tool_config.json <<'EOF'
   }
 }
 EOF
+
+exec node build/sse.js
