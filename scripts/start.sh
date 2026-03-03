@@ -17,9 +17,24 @@ DEFILLAMA_MCP_PORT="${DEFILLAMA_MCP_PORT:-18080}"
 
 mkdir -p "$TOOLS_DIR" config
 
+# --- Python dependency versions pinned for reproducibility ---
+# Exact versions prevent unexpected breakage when upstream packages release new versions.
+# Update these variables deliberately when you want to upgrade a dependency.
+PIP_VERSION="24.3.1"
+MCP_VERSION="1.4.1"
+HTTPX_VERSION="0.28.1"
+PANDAS_VERSION="2.2.3"
+PYTHON_DOTENV_VERSION="1.0.1"
+TABULATE_VERSION="0.9.0"
+
 # --- Install Python deps needed for kukapay dune, demcp defillama, wallet-inspector (safe to run repeatedly) ---
-python3 -m pip install --no-cache-dir --break-system-packages -U pip >/dev/null
-python3 -m pip install --no-cache-dir --break-system-packages "mcp[cli]>=1.4.1" httpx pandas python-dotenv tabulate >/dev/null
+python3 -m pip install --no-cache-dir --break-system-packages "pip==${PIP_VERSION}" >/dev/null
+python3 -m pip install --no-cache-dir --break-system-packages \
+  "mcp[cli]==${MCP_VERSION}" \
+  "httpx==${HTTPX_VERSION}" \
+  "pandas==${PANDAS_VERSION}" \
+  "python-dotenv==${PYTHON_DOTENV_VERSION}" \
+  "tabulate==${TABULATE_VERSION}" >/dev/null
 
 # --- Install uv (used by kukapay/dune-analytics-mcp) ---
 if ! command -v uv >/dev/null 2>&1; then
