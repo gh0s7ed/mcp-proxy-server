@@ -28,7 +28,7 @@
     "cors": "^2.8.5",
     "eventsource": "^4.0.0",
     "express": "^4.21.1",
-    "express-session": "^1.18.1",
+    "express-session": "^1.19.0",
     "node-pty": "^1.0.0",
     "zod-to-json-schema": "^3.23.5"
   },
