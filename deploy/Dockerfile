@@ -1,4 +1,4 @@
-ARG BUILD_FROM=nikolaik/python-nodejs:python3.12-nodejs23
+ARG BUILD_FROM=nikolaik/python-nodejs:python3.12-nodejs22
 
 FROM $BUILD_FROM AS base
 WORKDIR /mcp-proxy-server
