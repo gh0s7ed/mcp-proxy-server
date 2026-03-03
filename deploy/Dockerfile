@@ -31,7 +31,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g pnpm bun
+RUN npm install -g bun
 
 RUN if [ -n "$PRE_INSTALLED_PIP_PACKAGES_ARG" ]; then \
       echo "Installing pre-defined PIP packages: $PRE_INSTALLED_PIP_PACKAGES_ARG" && \
