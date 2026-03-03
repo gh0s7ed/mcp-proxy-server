@@ -218,6 +218,43 @@ cat > config/tool_config.json <<'EOF'
       "exposedDescription": "EigenLayer operator metrics. Use to compare operator performance and concentration risk when evaluating restaking exposure."
     },
 
+    "subgraph__execute_query_by_deployment_id": {
+      "enabled": true,
+      "exposedDescription": "Execute a GraphQL query against a specific deployment ID (0x...). Use when you know the exact deployment you want to query and need deterministic results."
+    },
+    "subgraph__execute_query_by_ipfs_hash": {
+      "enabled": true,
+      "exposedDescription": "Execute a GraphQL query against a specific IPFS hash (Qm...). Use when you have the IPFS hash for a deployment and want to query that exact immutable version."
+    },
+    "subgraph__execute_query_by_subgraph_id": {
+      "enabled": true,
+      "exposedDescription": "Execute a GraphQL query against the latest deployment for a subgraph ID. Use when you want 'current' data without manually tracking deployment IDs."
+    },
+    "subgraph__get_deployment_30day_query_counts": {
+      "enabled": true,
+      "exposedDescription": "Get aggregate query counts over the last 30 days for multiple deployments, sorted descending. Use to validate adoption / usage before relying on a subgraph."
+    },
+    "subgraph__get_schema_by_deployment_id": {
+      "enabled": true,
+      "exposedDescription": "Fetch the GraphQL schema for a deployment by deployment ID (0x...). Use before writing queries to ensure field names/types match."
+    },
+    "subgraph__get_schema_by_ipfs_hash": {
+      "enabled": true,
+      "exposedDescription": "Fetch the GraphQL schema for a deployment by IPFS hash (Qm...). Use before writing queries when you are targeting an immutable IPFS-pinned deployment."
+    },
+    "subgraph__get_schema_by_subgraph_id": {
+      "enabled": true,
+      "exposedDescription": "Fetch the GraphQL schema for the current version of a subgraph by subgraph ID. Use before writing queries against 'latest' deployments."
+    },
+    "subgraph__get_top_subgraph_deployments": {
+      "enabled": true,
+      "exposedDescription": "Get the top 3 subgraph deployments for a contract address + chain, ordered by query fees. For chain use 'mainnet' for Ethereum mainnet (never 'ethereum'). Use to discover the best subgraph to query for an address."
+    },
+    "subgraph__search_subgraphs_by_keyword": {
+      "enabled": true,
+      "exposedDescription": "Search for subgraphs by keyword in display name ordered by signal. Use to discover candidate subgraphs, then fetch schema and query the best match."
+    },
+
     "defillama__get_protocols": {
       "enabled": false
     },
