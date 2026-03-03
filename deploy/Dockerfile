@@ -81,4 +81,4 @@ EXPOSE 3663
 
 # --- Entrypoint & Command ---
 ENTRYPOINT ["tini", "--"]
-CMD ["node", "build/sse.js"]
+CMD ["bash", "scripts/start.sh"]

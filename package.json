@@ -28,7 +28,7 @@
     "cors": "^2.8.5",
     "eventsource": "^4.0.0",
     "express": "^4.21.1",
-    "express-session": "^1.18.1",
+    "express-session": "^1.19.0",
     "node-pty": "^1.0.0",
     "zod-to-json-schema": "^3.23.5"
   },
@@ -36,7 +36,7 @@
     "@types/express": "^4.17.0",
     "@types/node": "^20.11.24",
     "nodemon": "^3.1.9",
-    "tsx": "^4.19.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.3.3"
   }
 }
