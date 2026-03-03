@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${GATEWAY_API_KEY:?Set GATEWAY_API_KEY in Railway Variables}"
-: "${THEGRAPH_ACCESS_TOKEN:?Set THEGRAPH_ACCESS_TOKEN (Token API JWT) in Railway Variables}"
-: "${COINGECKO_DEMO_API_KEY:?Set COINGECKO_DEMO_API_KEY in Railway Variables}"
-: "${ALCHEMY_API_KEY:?Set ALCHEMY_API_KEY in Railway Variables}"
-: "${DUNE_API_KEY:?Set DUNE_API_KEY in Railway Variables}"
-: "${ETHERSCAN_API_KEY:?Set ETHERSCAN_API_KEY in Railway Variables}"
-: "${GOPLUS_API_KEY:?Set GOPLUS_API_KEY in Railway Variables}"
-: "${GOPLUS_API_SECRET:?Set GOPLUS_API_SECRET in Railway Variables}"
-: "${DUNE_SIM_API_KEY:?Set DUNE_SIM_API_KEY in Railway Variables}"
+# Check for required environment variables and warn if missing
+# (allow server to start even if some tools won't work)
+for var in GATEWAY_API_KEY THEGRAPH_ACCESS_TOKEN COINGECKO_DEMO_API_KEY \
+           ALCHEMY_API_KEY DUNE_API_KEY ETHERSCAN_API_KEY \
+           GOPLUS_API_KEY GOPLUS_API_SECRET DUNE_SIM_API_KEY; do
+  if [ -z "${!var:-}" ]; then
+    echo "WARNING: $var is not set. Some MCP servers may not function properly." >&2
+  fi
+done
 
 ROOT_DIR="$(pwd)"
 TOOLS_DIR="${TOOLS_DIR:-$ROOT_DIR/tools}"
@@ -165,48 +165,76 @@ timeout 10 bash -c "until printf '' 2>>/dev/null >>/dev/tcp/127.0.0.1/${DEFILLAM
 echo "DefiLlama MCP is live on port ${DEFILLAMA_MCP_PORT}!"
 
 # --- MCP server registry ---
+# Dynamically set 'active' based on whether required env vars are present
+COINGECKO_ACTIVE="true"
+[ -z "${COINGECKO_DEMO_API_KEY:-}" ] && COINGECKO_ACTIVE="false"
+
+SUBGRAPH_ACTIVE="true"
+[ -z "${GATEWAY_API_KEY:-}" ] && SUBGRAPH_ACTIVE="false"
+
+TOKEN_API_ACTIVE="true"
+[ -z "${THEGRAPH_ACCESS_TOKEN:-}" ] && TOKEN_API_ACTIVE="false"
+
+ALCHEMY_ACTIVE="true"
+[ -z "${ALCHEMY_API_KEY:-}" ] && ALCHEMY_ACTIVE="false"
+
+DUNE_CUSTOM_ACTIVE="true"
+[ -z "${DUNE_API_KEY:-}" ] && DUNE_CUSTOM_ACTIVE="false"
+
+DUNE_PRESET_ACTIVE="true"
+[ -z "${DUNE_API_KEY:-}" ] && DUNE_PRESET_ACTIVE="false"
+
+ETHERSCAN_ACTIVE="true"
+[ -z "${ETHERSCAN_API_KEY:-}" ] && ETHERSCAN_ACTIVE="false"
+
+GOPLUS_ACTIVE="true"
+[ -z "${GOPLUS_API_KEY:-}" ] || [ -z "${GOPLUS_API_SECRET:-}" ] && GOPLUS_ACTIVE="false"
+
+WALLET_INSPECTOR_ACTIVE="true"
+[ -z "${DUNE_SIM_API_KEY:-}" ] && WALLET_INSPECTOR_ACTIVE="false"
+
 cat > config/mcp_server.json <<EOF
 {
   "mcpServers": {
     "coingecko_demo": {
       "type": "stdio",
       "name": "CoinGecko Demo MCP",
-      "active": true,
+      "active": ${COINGECKO_ACTIVE},
       "command": "npx",
       "args": ["-y", "@coingecko/coingecko-mcp"],
       "env": {
         "COINGECKO_ENVIRONMENT": "demo",
-        "COINGECKO_DEMO_API_KEY": "${COINGECKO_DEMO_API_KEY}"
+        "COINGECKO_DEMO_API_KEY": "${COINGECKO_DEMO_API_KEY:-}"
       }
     },
 
     "subgraph": {
       "type": "sse",
       "name": "The Graph Subgraphs MCP",
-      "active": true,
+      "active": ${SUBGRAPH_ACTIVE},
       "url": "https://subgraphs.mcp.thegraph.com/sse",
-      "bearerToken": "${GATEWAY_API_KEY}"
+      "bearerToken": "${GATEWAY_API_KEY:-}"
     },
 
     "token_api": {
       "type": "stdio",
       "name": "The Graph Token API MCP",
-      "active": true,
+      "active": ${TOKEN_API_ACTIVE},
       "command": "npx",
       "args": ["-y", "@pinax/mcp", "--remote-url", "https://token-api.mcp.thegraph.com/"],
       "env": {
-        "ACCESS_TOKEN": "${THEGRAPH_ACCESS_TOKEN}"
+        "ACCESS_TOKEN": "${THEGRAPH_ACCESS_TOKEN:-}"
       }
     },
 
     "alchemy": {
       "type": "stdio",
       "name": "Alchemy MCP",
-      "active": true,
+      "active": ${ALCHEMY_ACTIVE},
       "command": "npx",
       "args": ["-y", "@alchemy/mcp-server"],
       "env": {
-        "ALCHEMY_API_KEY": "${ALCHEMY_API_KEY}",
+        "ALCHEMY_API_KEY": "${ALCHEMY_API_KEY:-}",
         "AGENT_WALLET_SERVER": "https://disabled.local"
       }
     },
@@ -214,59 +242,59 @@ cat > config/mcp_server.json <<EOF
     "dune_custom": {
       "type": "stdio",
       "name": "Dune Custom Queries (CSV) MCP",
-      "active": true,
+      "active": ${DUNE_CUSTOM_ACTIVE},
       "command": "uv",
       "args": ["run", "--directory", "${TOOLS_DIR}/dune-analytics-mcp", "python", "main.py"],
       "env": {
-        "DUNE_API_KEY": "${DUNE_API_KEY}"
+        "DUNE_API_KEY": "${DUNE_API_KEY:-}"
       }
     },
 
     "dune_preset": {
       "type": "stdio",
       "name": "Dune Preset Metrics MCP",
-      "active": true,
+      "active": ${DUNE_PRESET_ACTIVE},
       "command": "bun",
       "args": ["${TOOLS_DIR}/dune-mcp-server/src/index.ts", "stdio"],
       "env": {
-        "DUNE_API_KEY": "${DUNE_API_KEY}"
+        "DUNE_API_KEY": "${DUNE_API_KEY:-}"
       }
     },
 
     "etherscan": {
       "type": "stdio",
       "name": "Etherscan MCP (V2, multi-chain)",
-      "active": true,
+      "active": ${ETHERSCAN_ACTIVE},
       "command": "node",
       "args": ["${TOOLS_DIR}/mcp-etherscan-server/build/index.js"],
       "env": {
-        "ETHERSCAN_API_KEY": "${ETHERSCAN_API_KEY}"
+        "ETHERSCAN_API_KEY": "${ETHERSCAN_API_KEY:-}"
       }
     },
 
     "goplus": {
       "type": "stdio",
       "name": "GoPlus Security MCP",
-      "active": true,
+      "active": ${GOPLUS_ACTIVE},
       "command": "npx",
       "args": [
         "-y",
         "goplus-mcp@latest",
         "--key",
-        "${GOPLUS_API_KEY}",
+        "${GOPLUS_API_KEY:-}",
         "--secret",
-        "${GOPLUS_API_SECRET}"
+        "${GOPLUS_API_SECRET:-}"
       ]
     },
 
     "wallet_inspector": {
       "type": "stdio",
       "name": "Wallet Inspector MCP",
-      "active": true,
+      "active": ${WALLET_INSPECTOR_ACTIVE},
       "command": "uv",
       "args": ["--directory", "${TOOLS_DIR}/wallet-inspector-mcp", "run", "main.py"],
       "env": {
-        "DUNE_SIM_API_KEY": "${DUNE_SIM_API_KEY}"
+        "DUNE_SIM_API_KEY": "${DUNE_SIM_API_KEY:-}"
       }
     },
 
@@ -624,3 +652,23 @@ cat > config/tool_config.json <<'EOF'
   }
 }
 EOF
+
+# --- Summary of active MCP servers ---
+echo ""
+echo "========================================="
+echo "MCP Server Configuration Summary"
+echo "========================================="
+echo "coingecko_demo:     ${COINGECKO_ACTIVE}"
+echo "subgraph:           ${SUBGRAPH_ACTIVE}"
+echo "token_api:          ${TOKEN_API_ACTIVE}"
+echo "alchemy:            ${ALCHEMY_ACTIVE}"
+echo "dune_custom:        ${DUNE_CUSTOM_ACTIVE}"
+echo "dune_preset:        ${DUNE_PRESET_ACTIVE}"
+echo "etherscan:          ${ETHERSCAN_ACTIVE}"
+echo "goplus:             ${GOPLUS_ACTIVE}"
+echo "wallet_inspector:   ${WALLET_INSPECTOR_ACTIVE}"
+echo "aave_v3:            true"
+echo "defillama:          true"
+echo "========================================="
+echo ""
+echo "Setup complete! Starting SSE server..."
